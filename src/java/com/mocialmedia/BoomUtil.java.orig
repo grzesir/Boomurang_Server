@@ -11,8 +11,11 @@ public class BoomUtil {
 			String lastReplyTime, String roomType) {
 
 		//I ma changing to test github!
-		// Adding extra
+<<<<<<< HEAD
 		//commenting 1
+=======
+		// Adding extra
+>>>>>>> origin/master
 		
 		JSONObject o = new JSONObject();
 		try {
