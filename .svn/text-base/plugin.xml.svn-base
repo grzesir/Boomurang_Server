@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Main plugin for boomurang client.
+-->
+<plugin>
+    <class>com.mocialmedia.BoomurangPlugin</class>
+    <name>BoomurangPlugin</name>
+    <description>Boomurang client plugin</description>
+    <author>Mocial Media Team</author>
+    <version>1.1.4</version>
+    <date>11/15/2011</date>
+    <url>http://www.mocialmedia.com</url>
+    <minServerVersion>3.7.0</minServerVersion>
+</plugin>
