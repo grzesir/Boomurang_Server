@@ -99,7 +99,7 @@ import com.restfb.FacebookClient;
  * @author Ryan Graham.
  */
 public class BoomurangPlugin implements Plugin, PacketInterceptor {
-	final private boolean IS_PRODUCTION = false; // specify if this is
+	final private boolean IS_PRODUCTION = true; // specify if this is
 													// production release or dev
 													// release , necessary for
 													// push not. distinction.
@@ -658,13 +658,14 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					Date d = new Date();
 					d.setMinutes(d.getMinutes() - Integer.parseInt(param1));
 
+					// ******* Speed this up!
 					pstmt = con
 							.prepareStatement("SELECT ro.roomID,ro.latitude,ro.longitude,ro.roomType,ro.locationName,"
 									+ "ro.category,ro.street,ro.city,ro.state,ro.country,ro.zip,ro.facebookID,ro.msgCount ,"
 									+ "count(msg) as recMsgCount,ro.roomName,ro.category"
-									+ " from movRoomDetails as ro left join moMessages as me on ro.roomID=me.roomID  "
-									+ "where latitude>? and latitude<? and longitude>? and longitude<? "
-									+ "and me.logTime>? and roomType=? group by roomID having recMsgCount>=1 "
+									+ " from (SELECT * from movRoomDetails where latitude between ? and ? and longitude between ? and ?)"
+									+ " as ro left join moMessages as me on ro.roomID=me.roomID where"
+									+ " me.logTime>? and roomType=? group by roomID having recMsgCount>=1 "
 									+ "order by recMsgCount desc limit 0,?;");
 
 					pstmt.setDouble(1, minlat);
@@ -1794,7 +1795,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 								// user
 				{
 					PreparedStatement setStatement = con
-							.prepareStatement("INSERT INTO moKudos( messageID, username, value) VALUES (?,?,?)");
+							.prepareStatement("INSERT INTO moKudos(messageID, username, value) VALUES (?,?,?)");
 					// setStatement.setString(1,
 					// query.element("postID").getText());
 					setStatement.setString(1, messageID);
@@ -1832,12 +1833,15 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 						Log.info("Notifing User Kudos: "
 								+ rs.getString("sender"));
 						String parentPostID;
-						if (rs.getString("postID")!=""){
+						if (rs.getString("postID").length() > 10){
+							Log.info("PostID: " + rs.getString("postID"));
 							parentPostID=rs.getString("postID");
 						}
 						else{
+							Log.info("MessageID: " + rs.getString("messageID"));
 							parentPostID=rs.getString("messageID");
 						}
+						Log.info("ParentPostID: " + parentPostID);
 						// Payload payload = PushNotificationPayload.combined(
 						// kudosSender + " gave you positive kudos! ",
 						// kudosType, "default");
@@ -1848,7 +1852,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 								.makePushMessageForKudos(
 										BoomUtil.extractNameofUser(kudosSender)
 												+ " gave you Kudos!",
-										"default", parentPostID, 1);
+										"default", parentPostID, 1, rs.getString("sender"), kudosSender);
 						Payload payload = new Payload() {
 							public String toString() {
 								return pushMsg;
@@ -2018,6 +2022,10 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 		// if ((packet instanceof Message) && !processed) {
 		if ((packet instanceof Message) && !processed && incoming) {
 			Log.info("Intercepted Incoming Message");
+//			if(processed)
+//				Log.info("Processed");
+//			else
+//				Log.info("Not Processed");
 
 			Message message = (Message) packet;
 			// System.out.println(ii+"-->"+"#######Intercomming######");
@@ -2058,7 +2066,35 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					// set postID="" if it doesn't exist
 					if (jsonObject.isNull("postID")) {
 						jsonObject.put("postID", "");
+						jsonObject.put("replyCount", 0);
 					}
+					if (jsonObject.isNull("logTime")) {
+						jsonObject.put("logTime", System.currentTimeMillis());
+					}
+					if (jsonObject.isNull("lastReplyTime")) {
+						jsonObject.put("lastReplyTime", System.currentTimeMillis());
+					}
+					if (jsonObject.isNull("kudosUp")) {
+						jsonObject.put("kudosUp", 0);
+					}
+					if (jsonObject.isNull("kudosDown")) {
+						jsonObject.put("kudosDown", 0);
+					}
+					
+//					 rs.getString("msg"),
+//						rs.getString("postID"),
+//						rs.getString("messageID"),
+//						rs.getString("logTime"),
+//						rs.getString("locationName"),
+//						rs.getString("longitude"),
+//						rs.getString("latitude"),
+//						rs.getString("teleported"),
+//						kudosInfo.get(0)/* up */,
+//						kudosInfo.get(1)/* Down */,
+//						kudosInfo.get(2)/* user */,
+//						rs.getString("replyCount"),
+//						rs.getString("lastReplyTime"),
+//						rs.getString("roomType"));
 
 					message.setBody(jsonObject.toString());
 
@@ -2066,80 +2102,78 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					// System.out.println(ii+"-->"+"message.getTo().toString()="+message.getTo().toString());
 
 					//
-					//
-					// Log.info("Getting Components");
-					// // System.out.println(ii+"-->"+"Getting Components");
-					// String[] components =
-					// message.getTo().toString().split("@");
-					// String serviceDomain = components[1];
-					// String roomName = components[0];
-					//
-					// //
-					// System.out.println(ii+"-->"+"serviceDomain="+serviceDomain);
-					// // System.out.println(ii+"-->"+"roomName2="+roomName);
-					//
-					// Log.info("Service Domain: " + serviceDomain
-					// + " - Room Name: " + roomName);
-					// MultiUserChatService mucService = null;
-					//
-					// // what is this part for?
-					// // seems to get the service responsible service for the
-					// // domain
-					// // it is to find the service responsible to this chat
-					// group
-					// int i = 0;
-					// for (MultiUserChatService curService : server
-					// .getMultiUserChatManager()
-					// .getMultiUserChatServices()) {
-					// Log.info("Loop Domain Check: "
-					// + curService.getServiceDomain());
-					// if (curService.getServiceDomain().equals(serviceDomain))
-					// {
-					// mucService = curService;
-					// //
-					// System.out.println(ii+"-->"+"########################    "+"mucService.getNumberChatRooms()="+mucService.getNumberChatRooms());
-					// break;
-					// }
-					// //
-					// System.out.println(ii+"-->"+"######################## ="+i++);
-					// }
-					//
-					// // get the chat room from the service responsible for
-					// MUCRoom mucRoom = mucService.getChatRoom(roomName);
-					//
-					// boolean senderInRoom = false;
-					//
-					// // loop over all the users present in the chat room
-					// for (MUCRole user : mucRoom.getOccupants()) {
-					// if (message.getFrom().toBareJID()
-					// .equals(user.getUserAddress().toBareJID()))
-					// senderInRoom = true;
-					//
-					// Log.info("Get Occupants, From: "
-					// + message.getFrom().toBareJID()
-					// + " User Address: "
-					// + user.getUserAddress().toBareJID());
-					//
-					// // sendMessage(
-					// // user.getUserAddress().toBareJID(),
-					// // mucRoom.getName() + "@"
-					// // + mucService.getServiceDomain() + "/"
-					// // + message.getFrom().toBareJID(),
-					// // message.getBody(), message.getSubject());
-					// }
-					//
-					// // maybe user currently is not in the chat room
-					// if (!senderInRoom) {
-					// Log.info("Sender Not in Room");
-					// // System.out.println(ii+"-->"+"Sender Not in Room");
-					//
-					// // sendMessage(
-					// // message.getFrom().toBareJID(),
-					// // mucRoom.getName() + "@"
-					// // + mucService.getServiceDomain() + "/"
-					// // + message.getFrom().toBareJID(),
-					// // message.getBody(), message.getSubject());
-					// }
+					//****Commented section:
+					 Log.info("Getting Components");
+					 // System.out.println(ii+"-->"+"Getting Components");
+					 String[] components =
+					 message.getTo().toString().split("@");
+					 String serviceDomain = components[1];
+					 String roomName = components[0];
+					
+					 //
+					 System.out.println("serviceDomain="+serviceDomain);
+					 // System.out.println(ii+"-->"+"roomName2="+roomName);
+					
+					 Log.info("Service Domain: " + serviceDomain + " - Room Name: " + roomName);
+					 MultiUserChatService mucService = null;
+					
+					 // what is this part for?
+					 // seems to get the service responsible service for the
+					 // domain
+					 // it is to find the service responsible to this chat
+					 //group
+					 int i = 0;
+					 for (MultiUserChatService curService : 
+						 server.getMultiUserChatManager().getMultiUserChatServices()) 
+					 {
+						 Log.info("Loop Domain Check: " + curService.getServiceDomain());
+						 if (curService.getServiceDomain().equals(serviceDomain))
+						 {
+							 mucService = curService;
+							 //
+							 System.out.println("########################    "+"mucService.getNumberChatRooms()="+mucService.getNumberChatRooms());
+							 break;
+						 }
+						 //
+						 System.out.println("######################## ="+i++);
+					 }
+					
+					 // get the chat room from the service responsible for
+					 MUCRoom mucRoom = mucService.getChatRoom(roomName);
+					
+					 boolean senderInRoom = false;
+					
+					 // loop over all the users present in the chat room
+					 for (MUCRole user : mucRoom.getOccupants()) {
+						 if (message.getFrom().toBareJID().equals(user.getUserAddress().toBareJID()))
+							 senderInRoom = true;
+						
+						 Log.info("Get Occupants, From: "
+						 + message.getFrom().toBareJID()
+						 + " User Address: "
+						 + user.getUserAddress().toBareJID());
+						
+						  sendMessage(
+						  user.getUserAddress().toBareJID(),
+						  mucRoom.getName() + "@"
+						  + mucService.getServiceDomain() + "/"
+						  + message.getFrom().toBareJID(),
+						  message.getBody(), message.getSubject());
+					 }
+					
+					 // maybe user currently is not in the chat room
+					 if (!senderInRoom) {
+						 Log.info("Sender Not in Room");
+						 System.out.println("Sender Not in Room");
+					
+						  sendMessage(
+						  message.getFrom().toBareJID(),
+						  mucRoom.getName() + "@"
+						  + mucService.getServiceDomain() + "/"
+						  + message.getFrom().toBareJID(),
+						  message.getBody(), message.getSubject());
+					 }
+					//****Commented section
 
 					// add message to the db
 					// System.out.println(ii+"-->"+"---------Adding New Message------");
@@ -2412,7 +2446,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 						BoomUtil.extractNameofUser(relUser)
 								+ " has replied to your post!",
 						rs.getInt("badge"), "default",
-						relPostID, 3);
+						relPostID, 3, rs.getString("user"), relUser);
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;
@@ -2481,7 +2515,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 						BoomUtil.extractNameofUser(relUser)
 								+ " has replied to your post!",
 						rs.getInt("badge"), "default",
-						relPostID, 2);
+						relPostID, 2, rs.getString("user"), relUser);
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;
@@ -2597,7 +2631,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				final String pushMsg = BoomUtil.makePushMessage(
 						BoomUtil.extractNameofUser(relUser) + " said \""
 								+ BoomUtil.trancateMsg(relMsg, 80) + "\"", 1,
-						"default", parentPostID, 4);
+						"default", parentPostID, 4, rs.getString("user"), relUser);
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;
