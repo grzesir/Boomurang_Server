@@ -1847,7 +1847,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 						final String pushMsg = BoomUtil
 								.makePushMessageForKudos(
 										BoomUtil.extractNameofUser(kudosSender)
-												+ " gave you a positive Kudos! ",
+												+ " gave you Kudos!",
 										"default", parentPostID, 1);
 						Payload payload = new Payload() {
 							public String toString() {
@@ -2410,7 +2410,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 				final String pushMsg = BoomUtil.makePushMessage(
 						BoomUtil.extractNameofUser(relUser)
-								+ " has replied to you! ",
+								+ " has replied to your post!",
 						rs.getInt("badge"), "default",
 						relPostID, 3);
 				Payload payload = new Payload() {
@@ -2479,7 +2479,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 				final String pushMsg = BoomUtil.makePushMessage(
 						BoomUtil.extractNameofUser(relUser)
-								+ " has replied your Post! ",
+								+ " has replied to your post!",
 						rs.getInt("badge"), "default",
 						relPostID, 2);
 				Payload payload = new Payload() {

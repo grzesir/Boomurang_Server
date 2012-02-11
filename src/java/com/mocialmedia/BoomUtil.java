@@ -120,7 +120,7 @@ public class BoomUtil {
 	public static String trancateMsg(String s, int n) {
 
 		if (s.length() < n) {
-			return s + "...";
+			return s;
 		} else {
 			s = s.substring(0, n);
 			return s + "...";
