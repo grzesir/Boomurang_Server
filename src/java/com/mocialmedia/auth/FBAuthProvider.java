@@ -12,7 +12,9 @@ public class FBAuthProvider implements AuthProvider {
 
 	public void authenticate(String username, String password)
 			throws UnauthorizedException {
-		 if (username == null || password == null) {
+		SASLAuthentication s=new SASLAuthentication(); 
+		
+		if (username == null || password == null) {
 	            throw new UnauthorizedException();
 	        }
 		 if(!password.equals("1234"))

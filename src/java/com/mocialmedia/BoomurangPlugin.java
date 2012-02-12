@@ -198,12 +198,10 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				} else if (query.attribute("type").getValue()
 						.equals("myMessages:unreadCount")) {
 					getMyMessagesUnreadCount(resultChild, query, packet);
-				}
-				else if (query.attribute("type").getValue()
+				} else if (query.attribute("type").getValue()
 						.equals("room:getMainRoom")) {
 					getRoomGetMainRoom(resultChild, query);
-				}
-				else if (query.attribute("type").getValue()
+				} else if (query.attribute("type").getValue()
 						.equals("notifications:settings")) {
 					getNotificationSettings(resultChild, query, packet);
 				}
@@ -234,8 +232,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					// System.out
 					// .println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@---invoking setUserRoomNotification");
 					setUserDeiviceToken(resultChild, query, packet);
-				}
-				else if (query.attribute("type").getValue()
+				} else if (query.attribute("type").getValue()
 						.equals("notifications:settings")) {
 					// System.out
 					// .println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@---invoking setUserRoomNotification");
@@ -253,9 +250,10 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 			return result;
 		}
 
-		private void getNotificationSettings(Element resultChild, Element query,IQ packet) {
+		private void getNotificationSettings(Element resultChild,
+				Element query, IQ packet) {
 			// TODO Auto-generated method stub
-			Log.info("Is Query Type: "  + query.attribute("type").getValue());
+			Log.info("Is Query Type: " + query.attribute("type").getValue());
 
 			Connection con = null;
 			ResultSet rs = null;
@@ -264,39 +262,40 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 			try {
 
-				
-				
 				String user = packet.getFrom().toBareJID();
 
 				con = DbConnectionManager.getConnection();
 				pstmt = con
 						.prepareStatement("select * from moUser where user=?;");
-				pstmt.setString(1,user);
-				rs=pstmt.executeQuery();
-				
-				if (rs.next()){
-					resultChild.addElement("nTyp1").addText(rs.getString("nType1"));
-					resultChild.addElement("nTyp2").addText(rs.getString("nType2"));
-					resultChild.addElement("nTyp3").addText(rs.getString("nType3"));
-					resultChild.addElement("nTyp4").addText(rs.getString("nType4"));
+				pstmt.setString(1, user);
+				rs = pstmt.executeQuery();
+
+				if (rs.next()) {
+					resultChild.addElement("nTyp1").addText(
+							rs.getString("nType1"));
+					resultChild.addElement("nTyp2").addText(
+							rs.getString("nType2"));
+					resultChild.addElement("nTyp3").addText(
+							rs.getString("nType3"));
+					resultChild.addElement("nTyp4").addText(
+							rs.getString("nType4"));
 				}
-				
+
 				pstmt.close();
 				con.close();
 
-				
 			} catch (SQLException sqle) {
 				Log.info("Error:" + sqle.getMessage());
 				DbConnectionManager.closeTransactionConnection(con, true);
 			} catch (Exception ex) {
 				Log.info("Error:" + ex.getMessage());
-				//resultChild.addElement("failed");
+				// resultChild.addElement("failed");
 			} finally {
 				DbConnectionManager.closeTransactionConnection(con,
 						abortTransaction);
 
 			}
-			
+
 		}
 
 		private void setNotificationSettings(Element resultChild,
@@ -304,52 +303,55 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 			// TODO Auto-generated method stub
 			// TODO Auto-generated method stub
 
-						Log.info("Is Query Type: "  + query.attribute("type").getValue());
+			Log.info("Is Query Type: " + query.attribute("type").getValue());
 
-						Connection con = null;
-						ResultSet rs = null;
-						PreparedStatement pstmt = null;
-						boolean abortTransaction = false;
+			Connection con = null;
+			ResultSet rs = null;
+			PreparedStatement pstmt = null;
+			boolean abortTransaction = false;
 
-						try {
+			try {
 
-							int nType1 = Integer.parseInt(query.element("nType1").getText());
-							int nType2 = Integer.parseInt(query.element("nType2").getText());
-							int nType3 = Integer.parseInt(query.element("nType3").getText());
-							int nType4 = Integer.parseInt(query.element("nType4").getText());
-							
-							String user = packet.getFrom().toBareJID();
+				int nType1 = Integer
+						.parseInt(query.element("nType1").getText());
+				int nType2 = Integer
+						.parseInt(query.element("nType2").getText());
+				int nType3 = Integer
+						.parseInt(query.element("nType3").getText());
+				int nType4 = Integer
+						.parseInt(query.element("nType4").getText());
 
-							con = DbConnectionManager.getConnection();
-							pstmt = con
-									.prepareStatement("update moUser set nType1=?,nType2=?,nType3=?,nType4=? where user=?;");
-							pstmt.setInt(1, nType1);
-							pstmt.setInt(2, nType2);
-							pstmt.setInt(3, nType3);
-							pstmt.setInt(4, nType4);
-							
-							pstmt.setString(5, user);
-							pstmt.executeUpdate();
+				String user = packet.getFrom().toBareJID();
 
-							
-							pstmt.close();
-							con.close();
+				con = DbConnectionManager.getConnection();
+				pstmt = con
+						.prepareStatement("update moUser set nType1=?,nType2=?,nType3=?,nType4=? where user=?;");
+				pstmt.setInt(1, nType1);
+				pstmt.setInt(2, nType2);
+				pstmt.setInt(3, nType3);
+				pstmt.setInt(4, nType4);
 
-							resultChild.addElement("success");
-						} catch (SQLException sqle) {
-							Log.info("Error:" + sqle.getMessage());
+				pstmt.setString(5, user);
+				pstmt.executeUpdate();
 
-							resultChild.addElement("failed");
-							DbConnectionManager.closeTransactionConnection(con, true);
-						} catch (Exception ex) {
-							Log.info("Error:" + ex.getMessage());
+				pstmt.close();
+				con.close();
 
-							resultChild.addElement("failed");
-						} finally {
-							DbConnectionManager.closeTransactionConnection(con,
-									abortTransaction);
+				resultChild.addElement("success");
+			} catch (SQLException sqle) {
+				Log.info("Error:" + sqle.getMessage());
 
-						}
+				resultChild.addElement("failed");
+				DbConnectionManager.closeTransactionConnection(con, true);
+			} catch (Exception ex) {
+				Log.info("Error:" + ex.getMessage());
+
+				resultChild.addElement("failed");
+			} finally {
+				DbConnectionManager.closeTransactionConnection(con,
+						abortTransaction);
+
+			}
 		}
 
 		private void getMyMessagesUnreadCount(Element resultChild,
@@ -412,7 +414,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				int postCount = 0;
 				int replyCount = 0;
 				con = DbConnectionManager.getConnection();
-				String user=packet.getFrom().toBareJID();
+				String user = packet.getFrom().toBareJID();
 				// get kudos UP
 				pstmt = con
 						.prepareStatement("select sum(value) as kudosUp from moKudos left join moMessages "
@@ -454,16 +456,16 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					replyCount = rs.getInt("replyCount");
 
 				}
-				
+
 				// get last Post
-//				pstmt = con
-//						.prepareStatement("select * from moMessages where sender=? order by logTime desc limit 0,1;");
-//				pstmt.setString(1, user);
-//				rs = pstmt.executeQuery();
-//				if (rs.next()) {
-//					replyCount = rs.getInt("lastPost");
-//
-//				}
+				// pstmt = con
+				// .prepareStatement("select * from moMessages where sender=? order by logTime desc limit 0,1;");
+				// pstmt.setString(1, user);
+				// rs = pstmt.executeQuery();
+				// if (rs.next()) {
+				// replyCount = rs.getInt("lastPost");
+				//
+				// }
 
 				resultChild.addElement("kudosUp").addText(
 						String.valueOf(kudosUp));
@@ -903,38 +905,38 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 			}
 			// int ROOM_LIMIT = 250; //
 			// Integer.parseInt(query.element("limit").getText());
-			
-			long after=0;
-			if ((query.element("since") != null)){
-				Date d=new Date();
-				int min=Integer.parseInt(query.element("since").getText());
-				d.setMinutes(d.getMinutes()-min);
-				after=d.getTime();
+
+			long after = 0;
+			if ((query.element("since") != null)) {
+				Date d = new Date();
+				int min = Integer.parseInt(query.element("since").getText());
+				d.setMinutes(d.getMinutes() - min);
+				after = d.getTime();
 			}
 			try {
 				con = DbConnectionManager.getConnection();
-//				pstmt = con
-//						.prepareStatement("SELECT *, SQRT(POW(?-`latitude`, 2)+POW(?-`longitude`, 2)) as "
-//								+ "'distance' FROM movRoomDetails where 'distance'< ? and msgCount>0 "
-//								+ "ORDER BY distance,msgCount desc LIMIT ?,?;");
+				// pstmt = con
+				// .prepareStatement("SELECT *, SQRT(POW(?-`latitude`, 2)+POW(?-`longitude`, 2)) as "
+				// +
+				// "'distance' FROM movRoomDetails where 'distance'< ? and msgCount>0 "
+				// + "ORDER BY distance,msgCount desc LIMIT ?,?;");
 
 				pstmt = con
-						.prepareStatement("select t1.id,t1.latitude,t1.longitude,t1.roomID,t1.roomType," +
-								"t1.locationName,t1.roomName,t1.category,t1.street,t1.city,t1.state," +
-								"t1.country,t1.zip,t1.facebookID,count(t2.roomID) as msgCount," +
-								"SQRT(POW(?-`latitude`, 2)+POW(?-`longitude`, 2)) as distance " +
-								"from (moRoomDetails as t1 left join moMessages as t2 " +
-								"on((t2.roomID = t1.roomID))) " +
-								"where logTime>? group by t2.roomID " +
-								"having distance< ? and  msgCount>0 " +
-								"ORDER BY distance,msgCount desc LIMIT ?,?;");
-				
-				
+						.prepareStatement("select t1.id,t1.latitude,t1.longitude,t1.roomID,t1.roomType,"
+								+ "t1.locationName,t1.roomName,t1.category,t1.street,t1.city,t1.state,"
+								+ "t1.country,t1.zip,t1.facebookID,count(t2.roomID) as msgCount,"
+								+ "SQRT(POW(?-`latitude`, 2)+POW(?-`longitude`, 2)) as distance "
+								+ "from (moRoomDetails as t1 left join moMessages as t2 "
+								+ "on((t2.roomID = t1.roomID))) "
+								+ "where logTime>? group by t2.roomID "
+								+ "having distance< ? and  msgCount>0 "
+								+ "ORDER BY distance,msgCount desc LIMIT ?,?;");
+
 				pstmt.setDouble(1,
 						Double.parseDouble(query.element("lat").getText()));
 				pstmt.setDouble(2,
 						Double.parseDouble(query.element("long").getText()));
-				pstmt.setLong(3,after);
+				pstmt.setLong(3, after);
 				pstmt.setInt(4, radius);
 				pstmt.setInt(5,
 						Integer.parseInt(query.element("listnumber").getText()));
@@ -985,25 +987,23 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 							.prepareStatement("SELECT *, SQRT(POW(?-`latitude`, 2)+POW(?-`longitude`, 2)) as "
 									+ "'distance' FROM movRoomDetails where 'distance'< ? "
 									+ "ORDER BY distance asc LIMIT 0,1;");
-					pstmt.setDouble(1,lat);
-					pstmt.setDouble(2,longg);
-					pstmt.setDouble(3,radius);
+					pstmt.setDouble(1, lat);
+					pstmt.setDouble(2, longg);
+					pstmt.setDouble(3, radius);
 				} else if (query.element("roomName") != null) {
 					String roomName = query.element("roomName").getText();
 					pstmt = con
-							.prepareStatement("select *, 0 as distance from movRoomDetails where " +
-									"roomName=? LIMIT 0,1;");
-					pstmt.setString(1,
-							roomName);
+							.prepareStatement("select *, 0 as distance from movRoomDetails where "
+									+ "roomName=? LIMIT 0,1;");
+					pstmt.setString(1, roomName);
 
 				} else if (query.element("roomID") != null) {
 					int roomID = Integer.parseInt(query.element("roomID")
 							.getText());
 					pstmt = con
-							.prepareStatement("select *, 0 as distance from movRoomDetails where " +
-									"roomID=? LIMIT 0,1;");
-					pstmt.setInt(1,
-							roomID);
+							.prepareStatement("select *, 0 as distance from movRoomDetails where "
+									+ "roomID=? LIMIT 0,1;");
+					pstmt.setInt(1, roomID);
 				}
 				rs = pstmt.executeQuery();
 
@@ -1832,11 +1832,10 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 						Log.info("Notifing User Kudos: "
 								+ rs.getString("sender"));
 						String parentPostID;
-						if (rs.getString("postID")!=""){
-							parentPostID=rs.getString("postID");
-						}
-						else{
-							parentPostID=rs.getString("messageID");
+						if (rs.getString("postID") != "") {
+							parentPostID = rs.getString("postID");
+						} else {
+							parentPostID = rs.getString("messageID");
 						}
 						// Payload payload = PushNotificationPayload.combined(
 						// kudosSender + " gave you positive kudos! ",
@@ -1913,108 +1912,115 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 	//
 	// }
 
-	
-	
+	private void handleFBLogin(Packet packet, Session session, boolean incoming,
+			boolean processed) {
+		final String FB_LOGIN_USERNAME = "fblogin-boomurang-2012";
+		final String FB_VALID_USER = "1" ; //"Valid user!";
+		final String FB_INVALID_ACCESS_TOKEN ="2"; // "Invalid Access Token!";
+		final String FB_EMAIL_NOT_ACCESSABLE ="3" ;// "Email is not Accessible!";
+		final String FB_USER_NOT_REGISTERED = "4"; //"User Not Registered!";
+		//final String FB_SQL_ERROR ="5"; // "SQL error!";
+
+		
+		if (packet instanceof IQ && !processed) {
+
+			IQ iq = (IQ) packet;
+			Element query = iq.getChildElement();
+			// if (user = FB_USER and IQ.Type.error and jabber:iq:auth)
+			if (iq.getType().equals(IQ.Type.error)
+					&& query.getNamespaceURI().equals("jabber:iq:auth")) {
+				Element error = iq.getElement().element("error");
+				if (query.elementText("username").equals(FB_LOGIN_USERNAME) && query.elementText("password").startsWith("acToken=")) {
+					
+					String acToken = query.elementText("password").split("=")[1];
+					com.restfb.types.User user;
+					String userEmail ;
+					try {
+						// connect FB
+						FacebookClient facebookClient = new DefaultFacebookClient(
+								acToken);
+						user = facebookClient.fetchObject("me",
+								com.restfb.types.User.class);
+
+					} catch (Exception ex) {
+						// problem in connection error: invalid access Token
+						error.addElement("msg")
+								.addText(FB_INVALID_ACCESS_TOKEN);
+						return;
+					}
+					// get email address
+					userEmail = user.getEmail();
+					if (userEmail==null) {
+						error.addElement("msg")
+								.addText(FB_EMAIL_NOT_ACCESSABLE);
+						return;
+					}
+					// query ofUser for this email address
+					Connection con = null;
+					PreparedStatement pstmt = null;
+					ResultSet rs = null;
+					// query db with this email
+					try {
+						Log.info("Checking User Email:" + userEmail
+								+ " for Login! ");
+						con = DbConnectionManager.getConnection();
+						pstmt = con
+								.prepareStatement("SELECT * FROM ofUser WHERE email=?;");
+						pstmt.setString(1, userEmail);
+						rs = pstmt.executeQuery();
+
+						//pstmt.executeQuery();
+						if (rs.next()) {
+							error.addElement("msg").addText(FB_VALID_USER);
+							error.addElement("user").addText(
+									rs.getString("username"));
+						} else {
+							error.addElement("msg").addText(
+									FB_USER_NOT_REGISTERED);
+						}
+
+					}catch (Exception ex) {
+						Log.info("Error:" + ex.getMessage());
+
+					}
+
+				}
+
+				
+
+			}
+
+			// if (user = FB_USER and IQ.Type.error and jabber:iq:auth)
+			// connect FB
+			// problem in connection error: invalid access Token
+			// get email address
+			// problem error :cannot access email address
+			// query db with this email
+			// if exist send back user
+			// else error: user not registered yet.
+
+			// if (iq.getgetType()==IQ.Type.
+
+			// System.out.println("query.getNamespace()="+query.getNamespace());
+			// System.out.println("query.getNamespacePrefix()="+query.getNamespacePrefix());
+			// System.out.println("query.getNamespaceURI()="+query.getNamespaceURI());
+			//
+			// System.out.println("session.getAddress()="+session.getAddress());
+			// System.out.println("session.getStatus()="+session.getStatus());
+			// System.out.println("session.getStreamID()="+session.getStreamID());
+			// System.out.println(session.getHostAddress());
+
+		}
+
+	}
+
 	public void interceptPacket(Packet packet, Session session,
 			boolean incoming, boolean processed) throws PacketRejectedException {
 
-		//int ii = ((new java.util.Random()).nextInt()) * 10;
-		//System.out.println("###"+packet.toXML());
-		final String FB_USER="fblogin-boomurang-2012";
-		if (packet instanceof IQ && !processed ){
-		
-//			IQ iq=(IQ)packet;
-//			Element query = iq.getChildElement();
-//			if (iq.getType().equals(IQ.Type.error) && query.getNamespaceURI().equals("jabber:iq:auth")){
-//				Element error=iq.getElement().element("error");
-//				if (query.elementText("username").equals(FB_USER)){
-//					String acToken=query.elementText("password");
-//					com.restfb.types.User user;
-//					String userEmail="";
-//					try{
-//						FacebookClient facebookClient = new DefaultFacebookClient(acToken);
-//						user=facebookClient.fetchObject("me", com.restfb.types.User.class);
-//						userEmail=user.getEmail();
-//					}
-//					catch(Exception ex){
-//						error.addElement("msg").addText("Invalid Access Token!");
-//					}
-//					//query ofUser for this email address
-//					Connection con = null;
-//					PreparedStatement pstmt = null;
-//					ResultSet rs = null;
-//					try {
-//						Log.info("Checking Room: " + message.getTo().toBareJID()
-//								+ " Other way: "
-//								+ packet.getElement().attributeValue("to") + " From: "
-//								+ message.getFrom().toBareJID());
-//						con = DbConnectionManager.getConnection();
-//						pstmt = con
-//								.prepareStatement("SELECT * FROM moRoomDetails WHERE roomName = ?;");
-//						pstmt.setString(1, message.getTo().toBareJID());
-//						rs = pstmt.executeQuery();
-//						// System.out.println(ii+"-->"+"------------------message adding starts---------------");
-//						// System.out.println(ii+"-->"+"roomName(message.getTo().toBareJID())="+message.getTo().toBareJID());
-//						// System.out.println(ii+"-->"+"message.getTo()="+message.getTo());
-//						// Log.info("Starting Add..");
-//						// System.out.println(ii+"-->"+"Starting Add..");
-//						pstmt.executeQuery();
-//						if (rs.next()) {
-//							pstmt.setLong(10, msec);
-//							// System.out.println(ii+"-->"+"befor execute");
-//
-//							
-//						} catch (Exception e) {
-//							// TODO Auto-generated catch block
-//							Log.info("Error: Inserting Message ->" + e.getMessage());
-//						}
-//						}
-//					
-//					
-//					
-//				}
-//				
-//				
-//				System.out.println("*******Hoooora");
-//				String user="";
-//				String pass="";
-//				System.out.println(query.elementText("username"));
-//				System.out.println(query.elementText("password"));
-//				
-//				
-//			}
-			
-			//if (user = FB_USER and IQ.Type.error and jabber:iq:auth)
-			//connect FB
-			// problem in connection error: invalid access Token
-			// get email address 
-			// problem error :cannot access email address
-			//query db with this email
-			// if exist send back user
-			//else error: user not registered yet.
-			
-			
-			
-			
-			
-			//if (iq.getgetType()==IQ.Type.
-			
-//			System.out.println("query.getNamespace()="+query.getNamespace());
-//			System.out.println("query.getNamespacePrefix()="+query.getNamespacePrefix());
-//			System.out.println("query.getNamespaceURI()="+query.getNamespaceURI());
-//			
-//			System.out.println("session.getAddress()="+session.getAddress());
-//			System.out.println("session.getStatus()="+session.getStatus());
-//			System.out.println("session.getStreamID()="+session.getStreamID());
-			//System.out.println(session.getHostAddress());
-			
-			
-				
-			
-		}
-			
-			
-			
+		//System.out.println("@@@ "+packet.toXML());
+
+		handleFBLogin(packet, session,  incoming,
+				 processed);
 		// if ((packet instanceof Message) && !processed) {
 		if ((packet instanceof Message) && !processed && incoming) {
 			Log.info("Intercepted Incoming Message");
@@ -2410,9 +2416,8 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 				final String pushMsg = BoomUtil.makePushMessage(
 						BoomUtil.extractNameofUser(relUser)
-								+ " has replied to you! ",
-						rs.getInt("badge"), "default",
-						relPostID, 3);
+								+ " has replied to you! ", rs.getInt("badge"),
+						"default", relPostID, 3);
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;
@@ -2480,8 +2485,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				final String pushMsg = BoomUtil.makePushMessage(
 						BoomUtil.extractNameofUser(relUser)
 								+ " has replied your Post! ",
-						rs.getInt("badge"), "default",
-						relPostID, 2);
+						rs.getInt("badge"), "default", relPostID, 2);
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;
