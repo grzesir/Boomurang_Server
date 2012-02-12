@@ -99,7 +99,7 @@ import com.restfb.FacebookClient;
  * @author Ryan Graham.
  */
 public class BoomurangPlugin implements Plugin, PacketInterceptor {
-	final private boolean IS_PRODUCTION = false; // specify if this is
+	final private boolean IS_PRODUCTION = true; // specify if this is
 													// production release or dev
 													// release , necessary for
 													// push not. distinction.
@@ -1833,6 +1833,12 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 						Log.info("Notifing User Kudos: "
 								+ rs.getString("sender"));
 						String parentPostID;
+<<<<<<< HEAD
+						if (rs.getString("postID") != "") {
+							parentPostID = rs.getString("postID");
+						} else {
+							parentPostID = rs.getString("messageID");
+=======
 						if (rs.getString("postID").length() > 10){
 							Log.info("PostID: " + rs.getString("postID"));
 							parentPostID=rs.getString("postID");
@@ -1840,6 +1846,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 						else{
 							Log.info("MessageID: " + rs.getString("messageID"));
 							parentPostID=rs.getString("messageID");
+>>>>>>> origin/master
 						}
 						Log.info("ParentPostID: " + parentPostID);
 						// Payload payload = PushNotificationPayload.combined(
@@ -2451,9 +2458,14 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 				final String pushMsg = BoomUtil.makePushMessage(
 						BoomUtil.extractNameofUser(relUser)
+<<<<<<< HEAD
+								+ " has replied to you! ", rs.getInt("badge"),
+						"default", relPostID, 3);
+=======
 								+ " has replied to your post!",
 						rs.getInt("badge"), "default",
 						relPostID, 3, rs.getString("user"), relUser);
+>>>>>>> origin/master
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;
@@ -2520,9 +2532,14 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 				final String pushMsg = BoomUtil.makePushMessage(
 						BoomUtil.extractNameofUser(relUser)
+<<<<<<< HEAD
+								+ " has replied your Post! ",
+						rs.getInt("badge"), "default", relPostID, 2);
+=======
 								+ " has replied to your post!",
 						rs.getInt("badge"), "default",
 						relPostID, 2, rs.getString("user"), relUser);
+>>>>>>> origin/master
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;

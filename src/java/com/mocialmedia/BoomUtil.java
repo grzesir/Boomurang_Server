@@ -1,9 +1,20 @@
 package com.mocialmedia;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import org.jivesoftware.database.DbConnectionManager;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BoomUtil {
+	
+	private static final Logger Log = LoggerFactory
+			.getLogger(BoomurangPlugin.class);
+	
 	public static String makeMsgBody(String messageBody, String postID,
 			String messageID, String logTime, String locationName,
 			String longg, String lat, String teleported, String kudosUp,
@@ -34,16 +45,17 @@ public class BoomUtil {
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		} 
 		return o.toString();
 
 	}
 
 	public static String makePushMessage(String alert, int badge,
-			String sound, String postID, int nType) {
+			String sound, String postID, int nType, String recipient, String sender) {
 		JSONObject aps = new JSONObject();
 		//JSONObject info = new JSONObject();
 		JSONObject all = new JSONObject();
+		Connection con = null;
 		try {
 
 			aps.put("alert", alert);
@@ -53,19 +65,37 @@ public class BoomUtil {
 			aps.put("nType", nType);
 			all.put("aps", aps);
 			//all.put("info", info.toString());
+			
+			con = DbConnectionManager.getConnection();
+			PreparedStatement setStatement = con
+					.prepareStatement("INSERT INTO moNotifications(recipient, sender, nType, messageID, logTime) VALUES (?,?,?,?,?)");
+			setStatement.setString(1, recipient);
+			setStatement.setString(2, sender);
+			setStatement.setInt(3, nType);
+			setStatement.setString(4, postID);
+			setStatement.setLong(5, System.currentTimeMillis());
+			setStatement.executeUpdate();
+			setStatement.close();
 
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (SQLException sqle) {
+			Log.info("Error:" + sqle.getMessage());
+		} catch (Exception ex) {
+			Log.info("Error:" + ex.getMessage());
+		} finally {
+			DbConnectionManager.closeConnection(con);
 		}
 		return all.toString();
 	}
 
 	public static String makePushMessageForKudos(String alert, String sound,
-			String postID, int nType) {
+			String postID, int nType, String recipient, String sender) {
 		JSONObject aps = new JSONObject();
 		//JSONObject info = new JSONObject();
 		JSONObject all = new JSONObject();
+		Connection con = null;
 		try {
 			aps.put("alert", alert);
 			aps.put("sound", sound);
@@ -73,10 +103,27 @@ public class BoomUtil {
 			aps.put("nType", nType);
 			all.put("aps", aps);
 			//all.put("info", info.toString());
+			
+			con = DbConnectionManager.getConnection();
+			PreparedStatement setStatement = con
+					.prepareStatement("INSERT INTO moNotifications(recipient, sender, nType, messageID, logTime) VALUES (?,?,?,?,?)");
+			setStatement.setString(1, recipient);
+			setStatement.setString(2, sender);
+			setStatement.setInt(3, nType);
+			setStatement.setString(4, postID);
+			setStatement.setLong(5, System.currentTimeMillis());
+			setStatement.executeUpdate();
+			setStatement.close();
 
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (SQLException sqle) {
+			Log.info("Error:" + sqle.getMessage());
+		} catch (Exception ex) {
+			Log.info("Error:" + ex.getMessage());
+		} finally {
+			DbConnectionManager.closeConnection(con);
 		}
 		return all.toString();
 	}
@@ -121,7 +168,7 @@ public class BoomUtil {
 	public static String trancateMsg(String s, int n) {
 
 		if (s.length() < n) {
-			return s + "...";
+			return s;
 		} else {
 			s = s.substring(0, n);
 			return s + "...";
