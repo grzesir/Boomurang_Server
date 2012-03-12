@@ -90,6 +90,9 @@ import javapns.notification.PushNotificationPayload;
 import org.jivesoftware.openfire.muc.MUCRoom;
 import org.jivesoftware.openfire.muc.MUCRole;
 
+import com.restfb.DefaultFacebookClient;
+import com.restfb.FacebookClient;
+
 /**
  * Registration plugin.
  * 
@@ -195,6 +198,12 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				} else if (query.attribute("type").getValue()
 						.equals("myMessages:unreadCount")) {
 					getMyMessagesUnreadCount(resultChild, query, packet);
+				} else if (query.attribute("type").getValue()
+						.equals("room:getMainRoom")) {
+					getRoomGetMainRoom(resultChild, query);
+				} else if (query.attribute("type").getValue()
+						.equals("notifications:settings")) {
+					getNotificationSettings(resultChild, query, packet);
 				}
 
 			}
@@ -223,6 +232,11 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					// System.out
 					// .println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@---invoking setUserRoomNotification");
 					setUserDeiviceToken(resultChild, query, packet);
+				} else if (query.attribute("type").getValue()
+						.equals("notifications:settings")) {
+					// System.out
+					// .println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@---invoking setUserRoomNotification");
+					setNotificationSettings(resultChild, query, packet);
 				}
 			}
 
@@ -234,6 +248,110 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 			Log.info("Returning Result");
 			return result;
+		}
+
+		private void getNotificationSettings(Element resultChild,
+				Element query, IQ packet) {
+			// TODO Auto-generated method stub
+			Log.info("Is Query Type: " + query.attribute("type").getValue());
+
+			Connection con = null;
+			ResultSet rs = null;
+			PreparedStatement pstmt = null;
+			boolean abortTransaction = false;
+
+			try {
+
+				String user = packet.getFrom().toBareJID();
+
+				con = DbConnectionManager.getConnection();
+				pstmt = con
+						.prepareStatement("select * from moUser where user=?;");
+				pstmt.setString(1, user);
+				rs = pstmt.executeQuery();
+
+				if (rs.next()) {
+					resultChild.addElement("nTyp1").addText(
+							rs.getString("nType1"));
+					resultChild.addElement("nTyp2").addText(
+							rs.getString("nType2"));
+					resultChild.addElement("nTyp3").addText(
+							rs.getString("nType3"));
+					resultChild.addElement("nTyp4").addText(
+							rs.getString("nType4"));
+				}
+
+				pstmt.close();
+				con.close();
+
+			} catch (SQLException sqle) {
+				Log.info("Error:" + sqle.getMessage());
+				DbConnectionManager.closeTransactionConnection(con, true);
+			} catch (Exception ex) {
+				Log.info("Error:" + ex.getMessage());
+				// resultChild.addElement("failed");
+			} finally {
+				DbConnectionManager.closeTransactionConnection(con,
+						abortTransaction);
+
+			}
+
+		}
+
+		private void setNotificationSettings(Element resultChild,
+				Element query, IQ packet) {
+			// TODO Auto-generated method stub
+			// TODO Auto-generated method stub
+
+			Log.info("Is Query Type: " + query.attribute("type").getValue());
+
+			Connection con = null;
+			ResultSet rs = null;
+			PreparedStatement pstmt = null;
+			boolean abortTransaction = false;
+
+			try {
+
+				int nType1 = Integer
+						.parseInt(query.element("nType1").getText());
+				int nType2 = Integer
+						.parseInt(query.element("nType2").getText());
+				int nType3 = Integer
+						.parseInt(query.element("nType3").getText());
+				int nType4 = Integer
+						.parseInt(query.element("nType4").getText());
+
+				String user = packet.getFrom().toBareJID();
+
+				con = DbConnectionManager.getConnection();
+				pstmt = con
+						.prepareStatement("update moUser set nType1=?,nType2=?,nType3=?,nType4=? where user=?;");
+				pstmt.setInt(1, nType1);
+				pstmt.setInt(2, nType2);
+				pstmt.setInt(3, nType3);
+				pstmt.setInt(4, nType4);
+
+				pstmt.setString(5, user);
+				pstmt.executeUpdate();
+
+				pstmt.close();
+				con.close();
+
+				resultChild.addElement("success");
+			} catch (SQLException sqle) {
+				Log.info("Error:" + sqle.getMessage());
+
+				resultChild.addElement("failed");
+				DbConnectionManager.closeTransactionConnection(con, true);
+			} catch (Exception ex) {
+				Log.info("Error:" + ex.getMessage());
+
+				resultChild.addElement("failed");
+			} finally {
+				DbConnectionManager.closeTransactionConnection(con,
+						abortTransaction);
+
+			}
 		}
 
 		private void getMyMessagesUnreadCount(Element resultChild,
@@ -261,7 +379,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				}
 
 				pstmt = con
-						.prepareStatement("select count(*) as unreadReplyCount from moMsgReadTrack where user=? and postID<>\"\";");
+						.prepareStatement("select count(distinct relMessageID) as unreadReplyCount from moMsgReadTrack where user=? and postID<>\"\";");
 				pstmt.setString(1, packet.getFrom().toBareJID());
 				rs = pstmt.executeQuery();
 				if (rs.next()) {
@@ -296,12 +414,12 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				int postCount = 0;
 				int replyCount = 0;
 				con = DbConnectionManager.getConnection();
-
+				String user = packet.getFrom().toBareJID();
 				// get kudos UP
 				pstmt = con
 						.prepareStatement("select sum(value) as kudosUp from moKudos left join moMessages "
 								+ "on moKudos.messageID=moMessages.messageID where sender=? and value>0 ;");
-				pstmt.setString(1, packet.getFrom().toBareJID());
+				pstmt.setString(1, user);
 				rs = pstmt.executeQuery();
 				if (rs.next()) {
 					kudosUp = rs.getInt("kudosUp");
@@ -312,7 +430,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				pstmt = con
 						.prepareStatement("select sum(value) as kudosDown from moKudos left join moMessages on "
 								+ "moKudos.messageID=moMessages.messageID where sender=? and value<0 ;");
-				pstmt.setString(1, packet.getFrom().toBareJID());
+				pstmt.setString(1, user);
 				rs = pstmt.executeQuery();
 				if (rs.next()) {
 					kudosDown = rs.getInt("kudosDown");
@@ -322,7 +440,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				// get post Count
 				pstmt = con
 						.prepareStatement("select count(msg) as postCount from moMessages where sender=? and postID=\"\";");
-				pstmt.setString(1, packet.getFrom().toBareJID());
+				pstmt.setString(1, user);
 				rs = pstmt.executeQuery();
 				if (rs.next()) {
 					postCount = rs.getInt("postCount");
@@ -332,12 +450,22 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				// get reply Count
 				pstmt = con
 						.prepareStatement("select count(msg) as replyCount from moMessages where sender=? and postID<>\"\";");
-				pstmt.setString(1, packet.getFrom().toBareJID());
+				pstmt.setString(1, user);
 				rs = pstmt.executeQuery();
 				if (rs.next()) {
 					replyCount = rs.getInt("replyCount");
 
 				}
+
+				// get last Post
+				// pstmt = con
+				// .prepareStatement("select * from moMessages where sender=? order by logTime desc limit 0,1;");
+				// pstmt.setString(1, user);
+				// rs = pstmt.executeQuery();
+				// if (rs.next()) {
+				// replyCount = rs.getInt("lastPost");
+				//
+				// }
 
 				resultChild.addElement("kudosUp").addText(
 						String.valueOf(kudosUp));
@@ -485,7 +613,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 									+ "ro.locationName,ro.category,ro.street,ro.city,ro.msgCount, ro.roomName,"
 									+ "ro.state,ro.country,ro.zip,ro.facebookID,ro.category from movRoomDetails as ro "
 									+ "where latitude>? and latitude<? and longitude>? and "
-									+ "longitude<?  group by ro.roomID  desc;");
+									+ "longitude<? order by msgCount desc;");
 
 					pstmt.setDouble(1, minlat);
 					pstmt.setDouble(2, maxlat);
@@ -496,10 +624,10 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					Log.info("rooms:square--> roomType!=0 && criterion==0");
 					pstmt = con
 							.prepareStatement("SELECT ro.roomID,ro.latitude,ro.longitude,ro.roomType,"
-									+ "ro.locationName,ro.category,ro.street,ro.city,ro.msgCount ,ro.roomName,"
+									+ "ro.locationName,ro.category,ro.street,ro.city,ro.msgCount, ro.roomName,"
 									+ "ro.state,ro.country,ro.zip,ro.facebookID,ro.category from movRoomDetails as ro "
 									+ "where latitude>? and latitude<? and longitude>? and "
-									+ "longitude<? and roomType=?  group by ro.roomID  desc;");
+									+ "longitude<? and roomType=? order by msgCount desc;");
 
 					pstmt.setDouble(1, minlat);
 					pstmt.setDouble(2, maxlat);
@@ -532,13 +660,14 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					Date d = new Date();
 					d.setMinutes(d.getMinutes() - Integer.parseInt(param1));
 
+					// ******* Speed this up!
 					pstmt = con
 							.prepareStatement("SELECT ro.roomID,ro.latitude,ro.longitude,ro.roomType,ro.locationName,"
 									+ "ro.category,ro.street,ro.city,ro.state,ro.country,ro.zip,ro.facebookID,ro.msgCount ,"
 									+ "count(msg) as recMsgCount,ro.roomName,ro.category"
-									+ " from movRoomDetails as ro left join moMessages as me on ro.roomID=me.roomID  "
-									+ "where latitude>? and latitude<? and longitude>? and longitude<? "
-									+ "and me.logTime>? and roomType=? group by roomID having recMsgCount>=1 "
+									+ " from (SELECT * from movRoomDetails where latitude between ? and ? and longitude between ? and ?)"
+									+ " as ro left join moMessages as me on ro.roomID=me.roomID where"
+									+ " me.logTime>? and roomType=? group by roomID having recMsgCount>=1 "
 									+ "order by recMsgCount desc limit 0,?;");
 
 					pstmt.setDouble(1, minlat);
@@ -603,14 +732,105 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				rs = pstmt.executeQuery();
 
 				Log.info("rooms:square--> adding room info");
+				ArrayList<Integer> roomIDs = new ArrayList<Integer>();
+
 				while (rs.next()) {
 					// Log.info("rooms 1");
+					roomIDs.add(rs.getInt("roomID"));
 					addRoomToElement(resultChild, rs.getString("latitude"),
 							rs.getString("longitude"), rs.getString("roomID"),
 							rs.getString("locationName"),
 							rs.getString("roomName"), "-1",
 							rs.getString("msgCount"), rs.getString("roomType"),
 							rs.getString("category"));
+				}
+
+				// if the number of rooms is less than limit so try to add more
+				// if possible to reach limit sticking to type sent
+				int rest = limit - roomIDs.size();
+				if (rest > 0) {
+					Log.info("rooms:square--> adding more rooms!");
+					if (roomType == 0 && criterion == 1) {
+						// setting date
+						// Log.info("rooms:square--> roomType==0 && criterion==1");
+						Date d = new Date();
+						d.setMinutes(d.getMinutes() - Integer.parseInt(param1));
+
+						pstmt = con
+								.prepareStatement("SELECT ro.roomID,ro.latitude,ro.longitude,ro.roomType,ro.locationName,"
+										+ "ro.category,ro.street,ro.city,ro.state,ro.country,ro.zip,ro.facebookID,ro.msgCount ,"
+										+ "count(msg) as recMsgCount,ro.roomName,ro.category"
+										+ " from movRoomDetails as ro left join moMessages as me on ro.roomID=me.roomID  "
+										+ "where latitude>? and latitude<? and longitude>? and longitude<? "
+										+ " group by roomID "
+										+ "order by recMsgCount desc limit 0,?;");
+
+						pstmt.setDouble(1, minlat);
+						pstmt.setDouble(2, maxlat);
+						pstmt.setDouble(3, minlong);
+						pstmt.setDouble(4, maxlong);
+						pstmt.setInt(5, limit * 2);
+					} else if (roomType != 0 && criterion == 1) {
+						// Log.info("rooms:square--> roomType!=0 && criterion==1");
+						Date d = new Date();
+						d.setMinutes(d.getMinutes() - Integer.parseInt(param1));
+
+						pstmt = con
+								.prepareStatement("SELECT ro.roomID,ro.latitude,ro.longitude,ro.roomType,ro.locationName,"
+										+ "ro.category,ro.street,ro.city,ro.state,ro.country,ro.zip,ro.facebookID,ro.msgCount ,"
+										+ "count(msg) as recMsgCount,ro.roomName,ro.category"
+										+ " from movRoomDetails as ro left join moMessages as me on ro.roomID=me.roomID  "
+										+ "where latitude>? and latitude<? and longitude>? and longitude<? "
+										+ " and roomType=? group by roomID  "
+										+ "order by recMsgCount desc limit 0,?;");
+
+						pstmt.setDouble(1, minlat);
+						pstmt.setDouble(2, maxlat);
+						pstmt.setDouble(3, minlong);
+						pstmt.setDouble(4, maxlong);
+
+						pstmt.setInt(5, roomType);
+						pstmt.setInt(6, limit * 2);
+					} else if (roomType != 0 && criterion == 2) {
+						// Log.info("rooms:square--> roomType!=0 && criterion==1");
+						Date d = new Date();
+						d.setMinutes(d.getMinutes() - Integer.parseInt(param1));
+
+						pstmt = con
+								.prepareStatement("SELECT ro.roomID,ro.latitude,ro.longitude,ro.roomType,ro.locationName,"
+										+ "ro.category,ro.street,ro.city,ro.state,ro.country,ro.zip,ro.facebookID,ro.msgCount ,"
+										+ "count(msg) as recMsgCount,ro.roomName,ro.category"
+										+ " from movRoomDetails as ro left join moMessages as me on ro.roomID=me.roomID  "
+										+ "where latitude>? and latitude<? and longitude>? and longitude<? "
+										+ " and roomType<>? group by roomID "
+										+ "order by recMsgCount desc limit 0,?;");
+
+						pstmt.setDouble(1, minlat);
+						pstmt.setDouble(2, maxlat);
+						pstmt.setDouble(3, minlong);
+						pstmt.setDouble(4, maxlong);
+						pstmt.setInt(5, roomType);
+						pstmt.setInt(6, limit * 2);
+
+					}
+					rs = pstmt.executeQuery();
+					while (rs.next()) {
+						// Log.info("rooms 1");
+						// if roomID is not already added add it
+						if (!roomIDs.contains(rs.getInt("roomID")) && rest > 0) {
+							roomIDs.add(rs.getInt("roomID"));
+							addRoomToElement(resultChild,
+									rs.getString("latitude"),
+									rs.getString("longitude"),
+									rs.getString("roomID"),
+									rs.getString("locationName"),
+									rs.getString("roomName"), "0",
+									rs.getString("msgCount"),
+									rs.getString("roomType"),
+									rs.getString("category"));
+							rest--;
+						}
+					}
 				}
 			}
 
@@ -686,22 +906,106 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 			}
 			// int ROOM_LIMIT = 250; //
 			// Integer.parseInt(query.element("limit").getText());
+
+			long after = 0;
+			if ((query.element("since") != null)) {
+				Date d = new Date();
+				int min = Integer.parseInt(query.element("since").getText());
+				d.setMinutes(d.getMinutes() - min);
+				after = d.getTime();
+			}
 			try {
 				con = DbConnectionManager.getConnection();
+				// pstmt = con
+				// .prepareStatement("SELECT *, SQRT(POW(?-`latitude`, 2)+POW(?-`longitude`, 2)) as "
+				// +
+				// "'distance' FROM movRoomDetails where 'distance'< ? and msgCount>0 "
+				// + "ORDER BY distance,msgCount desc LIMIT ?,?;");
+
 				pstmt = con
-						.prepareStatement("SELECT *, SQRT(POW(?-`latitude`, 2)+POW(?-`longitude`, 2)) as "
-								+ "'distance' FROM movRoomDetails where 'distance'< ? and msgCount>0 "
+						.prepareStatement("select t1.id,t1.latitude,t1.longitude,t1.roomID,t1.roomType,"
+								+ "t1.locationName,t1.roomName,t1.category,t1.street,t1.city,t1.state,"
+								+ "t1.country,t1.zip,t1.facebookID,count(t2.roomID) as msgCount,"
+								+ "SQRT(POW(?-`latitude`, 2)+POW(?-`longitude`, 2)) as distance "
+								+ "from (moRoomDetails as t1 left join moMessages as t2 "
+								+ "on((t2.roomID = t1.roomID))) "
+								+ "where logTime>? group by t2.roomID "
+								+ "having distance< ? and  msgCount>0 "
 								+ "ORDER BY distance,msgCount desc LIMIT ?,?;");
 
 				pstmt.setDouble(1,
 						Double.parseDouble(query.element("lat").getText()));
 				pstmt.setDouble(2,
 						Double.parseDouble(query.element("long").getText()));
-				pstmt.setInt(3, radius);
-				pstmt.setInt(4,
-						Integer.parseInt(query.element("listnumber").getText()));
+				pstmt.setLong(3, after);
+				pstmt.setInt(4, radius);
 				pstmt.setInt(5,
+						Integer.parseInt(query.element("listnumber").getText()));
+				pstmt.setInt(6,
 						Integer.parseInt(query.element("limit").getText()));
+				rs = pstmt.executeQuery();
+
+				// Log.info("Starting SQL Build in getRoomsCloseByLocation");
+				int i = 0;
+				while (rs.next()) {
+					// System.out.println("---------" + i++);
+					// Log.info("Add roomID: " + rs.getString("roomID"));
+					addRoomToElement(resultChild, rs.getString("latitude"),
+							rs.getString("longitude"), rs.getString("roomID"),
+							rs.getString("locationName"),
+							rs.getString("roomName"), rs.getString("distance"),
+							rs.getString("msgCount"), rs.getString("roomType"),
+							rs.getString("category"));
+				}
+
+			} catch (SQLException sqle) {
+				Log.info("Error:" + sqle.getMessage());
+			} catch (Exception ex) {
+				Log.info("Error:" + ex.getMessage());
+			} finally {
+				DbConnectionManager.closeConnection(pstmt, con);
+			}
+		}
+
+		private void getRoomGetMainRoom(Element resultChild, Element query) {
+			Log.info("Is Query Type: " + query.attribute("type").getValue());
+			// return close rooms with messages inside
+
+			Connection con = null;
+			PreparedStatement pstmt = null;
+			ResultSet rs = null;
+			int radius = 1000;
+			try {
+				con = DbConnectionManager.getConnection();
+				if (query.element("lat") != null
+						&& query.element("long") != null) {
+					Double lat = Double.parseDouble(query.element("lat")
+							.getText());
+					Double longg = Double.parseDouble(query.element("long")
+							.getText());
+
+					pstmt = con
+							.prepareStatement("SELECT *, SQRT(POW(?-`latitude`, 2)+POW(?-`longitude`, 2)) as "
+									+ "'distance' FROM movRoomDetails where 'distance'< ? "
+									+ "ORDER BY distance asc LIMIT 0,1;");
+					pstmt.setDouble(1, lat);
+					pstmt.setDouble(2, longg);
+					pstmt.setDouble(3, radius);
+				} else if (query.element("roomName") != null) {
+					String roomName = query.element("roomName").getText();
+					pstmt = con
+							.prepareStatement("select *, 0 as distance from movRoomDetails where "
+									+ "roomName=? LIMIT 0,1;");
+					pstmt.setString(1, roomName);
+
+				} else if (query.element("roomID") != null) {
+					int roomID = Integer.parseInt(query.element("roomID")
+							.getText());
+					pstmt = con
+							.prepareStatement("select *, 0 as distance from movRoomDetails where "
+									+ "roomID=? LIMIT 0,1;");
+					pstmt.setInt(1, roomID);
+				}
 				rs = pstmt.executeQuery();
 
 				// Log.info("Starting SQL Build in getRoomsCloseByLocation");
@@ -744,13 +1048,13 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				// "AS t2 ON t1.roomID = t2.roomID WHERE t1.sender =? and postID!=\"\" order by logTime asc;");
 
 				pstmt = con
-						.prepareStatement("select distinct t2.messageID,t2.msg,t2.postID,t2.logTime,t2.nickname, t2.replyCount," +
-								"t2.lastReplyTime, locationName,roomName,"
+						.prepareStatement("select distinct t2.messageID,t2.msg,t2.postID,t2.logTime,t2.nickname, t2.replyCount,"
+								+ "t2.lastReplyTime, locationName,roomName,"
 								+ "latitude,longitude,t2.teleported,roomType,count(t4.messageID) as unreadCount from "
 								+ "(((moMessages as t1 inner join moMessages as t2 on t1.postID=t2.messageID) "
 								+ "inner join moRoomDetails AS t3 ON t2.roomID = t3.roomID) "
-								+ "left join moMsgReadTrack as t4 on t4.messageID=t1.messageID) WHERE t2.sender<>? " +
-								"and t1.sender =? "
+								+ "left join moMsgReadTrack as t4 on t4.messageID=t1.messageID) WHERE t2.sender<>? "
+								+ "and t1.sender =? "
 								+ "group by t1.messageID order by t2.lastReplyTime desc;");
 
 				pstmt.setString(1, packet.getFrom().toBareJID());
@@ -758,9 +1062,6 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				// pstmt.setString(2, packet.getFrom().toBareJID());
 				rs = pstmt.executeQuery();
 
-				
-				
-				
 				String body = "";
 				int i = 0;
 				Vector<String> kudosInfo;
@@ -781,7 +1082,8 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 							kudosInfo.get(0)/* up */, kudosInfo.get(1)/* Down */,
 							kudosInfo.get(2)/* user */,
 							rs.getString("replyCount"),
-							rs.getString("lastReplyTime"), rs.getString("roomType"),
+							rs.getString("lastReplyTime"),
+							rs.getString("roomType"),
 							rs.getString("unreadCount"));
 
 					addMessageToElement(
@@ -1374,9 +1676,6 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				if (!rs.first()) // if there is not already room with specified
 									// info (lat,long,location name)
 				{
-					// system.out.println("!rs.first().....");
-					pstmt.close();
-					con.close();
 
 					// prepare recived info for insert
 					String category = "";
@@ -1406,7 +1705,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 								.getText());
 
 					// insert the room
-					con = DbConnectionManager.getTransactionConnection();
+					// con = DbConnectionManager.getTransactionConnection();
 					pstmt = con
 							.prepareStatement("INSERT INTO moRoomDetails(latitude, longitude, roomID, roomType, locationName, roomName, category, street, city, state, country, zip, facebookID) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);");
 
@@ -1428,33 +1727,44 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					pstmt.setString(13, facebookID);
 
 					pstmt.executeUpdate();
-					pstmt.close();
-					con.close();
+
+					// returning client created room information
+					addRoomToElement(resultChild, query.element("lat")
+							.getText(), query.element("long").getText(),
+							String.valueOf(room.getID()),
+							query.element("locationName").getText(),
+							room.getName(), "0", "0", String.valueOf(roomType),
+							category);
+
+					// pstmt.close();
+					// con.close();
 				} else {
 					Log.info("Error: Location already Exists");
-					roomExists = true;
-					pstmt.close();
-					con.close();
+					// roomExists = true;
+
 				}
+				pstmt.close();
+				con.close();
 
 			} catch (SQLException sqle) {
 				Log.info("Error:" + sqle.getMessage());
 				abortTransaction = true;
 			} catch (Exception ex) {
 				Log.info("Error:" + ex.getMessage());
-			} finally {
-				DbConnectionManager.closeTransactionConnection(con,
-						abortTransaction);
-				// abortTransaction = true;
 			}
+			// } finally {
+			// DbConnectionManager.closeTransactionConnection(con,
+			// abortTransaction);
+			// // abortTransaction = true;
+			// }
 
-			if (abortTransaction)
-				resultChild.addElement("fail").addText("Database error.");
-			else if (roomExists)
-				resultChild.addElement("fail").addText(
-						"Location already exists.");
-			else
-				resultChild.addElement("success");
+			// if (abortTransaction)
+			// resultChild.addElement("fail").addText("Database error.");
+			// else if (roomExists)
+			// resultChild.addElement("fail").addText(
+			// "Location already exists.");
+			// else
+			// resultChild.addElement("success");
 		}
 
 		private void setKudosSet(Element query, IQ packet) {
@@ -1485,7 +1795,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 								// user
 				{
 					PreparedStatement setStatement = con
-							.prepareStatement("INSERT INTO moKudos( messageID, username, value) VALUES (?,?,?)");
+							.prepareStatement("INSERT INTO moKudos(messageID, username, value) VALUES (?,?,?)");
 					// setStatement.setString(1,
 					// query.element("postID").getText());
 					setStatement.setString(1, messageID);
@@ -1510,9 +1820,9 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 				// first find the user of the message
 				if (kudosType > 0) {
 					pstmt = con
-							.prepareStatement("select deviceToken,sender from moMessages as t1 "
+							.prepareStatement("select deviceToken,sender,postID,messageID from moMessages as t1 "
 									+ "left join moUser t2 on t1.sender=t2.user Where "
-									+ "messageID=? and t2.valid=1;");
+									+ "messageID=? and t2.valid=1 and nType1=1;");
 					pstmt.setString(1, messageID);
 					rs = pstmt.executeQuery();
 
@@ -1522,26 +1832,36 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 										// Token registered!
 						Log.info("Notifing User Kudos: "
 								+ rs.getString("sender"));
-//						Payload payload = PushNotificationPayload.combined(
-//								kudosSender + " gave you positive kudos! ",
-//								kudosType, "default");
-//						payload.addCustomDictionary("NType", 1);
-//						payload.addCustomDictionary("messageID", messageID);
-						
-						final String pushMsg = BoomUtil.makePushMessage(kudosSender
-								+ " gave you positive kudos! ", String.valueOf(kudosType), "default", "", "1");
+						String parentPostID;
+						if (rs.getString("postID").length() > 10){
+							Log.info("PostID: " + rs.getString("postID"));
+							parentPostID=rs.getString("postID");
+						}
+						else{
+							Log.info("MessageID: " + rs.getString("messageID"));
+							parentPostID=rs.getString("messageID");
+						}
+						Log.info("ParentPostID: " + parentPostID);
+						// Payload payload = PushNotificationPayload.combined(
+						// kudosSender + " gave you positive kudos! ",
+						// kudosType, "default");
+						// payload.addCustomDictionary("NType", 1);
+						// payload.addCustomDictionary("messageID", messageID);
+
+						final String pushMsg = BoomUtil
+								.makePushMessageForKudos(
+										BoomUtil.extractNameofUser(kudosSender)
+												+ " gave you Kudos!",
+										"default", parentPostID, 1, rs.getString("sender"), kudosSender);
 						Payload payload = new Payload() {
 							public String toString() {
 								return pushMsg;
 							};
 						};
-						
-						
+
 						PayloadPerDevice plpd = new PayloadPerDevice(payload,
 								rs.getString("deviceToken"));
-						
-						
-						
+
 						plpds.add(plpd);
 
 					}
@@ -1597,14 +1917,122 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 	//
 	// }
 
+	private void handleFBLogin(Packet packet, Session session, boolean incoming,
+			boolean processed) {
+		final String FB_LOGIN_USERNAME = "fblogin-boomurang-2012";
+		final String FB_VALID_USER = "1" ; //"Valid user!";
+		final String FB_INVALID_ACCESS_TOKEN ="2"; // "Invalid Access Token!";
+		final String FB_EMAIL_NOT_ACCESSABLE ="3" ;// "Email is not Accessible!";
+		final String FB_USER_NOT_REGISTERED = "4"; //"User Not Registered!";
+		//final String FB_SQL_ERROR ="5"; // "SQL error!";
+
+		
+		if (packet instanceof IQ && !processed) {
+
+			IQ iq = (IQ) packet;
+			Element query = iq.getChildElement();
+			// if (user = FB_USER and IQ.Type.error and jabber:iq:auth)
+			if (iq.getType().equals(IQ.Type.error)
+					&& query.getNamespaceURI().equals("jabber:iq:auth")) {
+				Element error = iq.getElement().element("error");
+				if (query.elementText("username").equals(FB_LOGIN_USERNAME) && query.elementText("password").startsWith("acToken=")) {
+					
+					String acToken = query.elementText("password").split("=")[1];
+					com.restfb.types.User user;
+					String userEmail ;
+					try {
+						// connect FB
+						FacebookClient facebookClient = new DefaultFacebookClient(
+								acToken);
+						user = facebookClient.fetchObject("me",
+								com.restfb.types.User.class);
+
+					} catch (Exception ex) {
+						// problem in connection error: invalid access Token
+						error.addElement("msg")
+								.addText(FB_INVALID_ACCESS_TOKEN);
+						return;
+					}
+					// get email address
+					userEmail = user.getEmail();
+					if (userEmail==null) {
+						error.addElement("msg")
+								.addText(FB_EMAIL_NOT_ACCESSABLE);
+						return;
+					}
+					// query ofUser for this email address
+					Connection con = null;
+					PreparedStatement pstmt = null;
+					ResultSet rs = null;
+					// query db with this email
+					try {
+						Log.info("Checking User Email:" + userEmail
+								+ " for Login! ");
+						con = DbConnectionManager.getConnection();
+						pstmt = con
+								.prepareStatement("SELECT * FROM ofUser WHERE email=?;");
+						pstmt.setString(1, userEmail);
+						rs = pstmt.executeQuery();
+
+						//pstmt.executeQuery();
+						if (rs.next()) {
+							error.addElement("msg").addText(FB_VALID_USER);
+							error.addElement("user").addText(
+									rs.getString("username"));
+						} else {
+							error.addElement("msg").addText(
+									FB_USER_NOT_REGISTERED);
+						}
+
+					}catch (Exception ex) {
+						Log.info("Error:" + ex.getMessage());
+
+					}
+
+				}
+
+				
+
+			}
+
+			// if (user = FB_USER and IQ.Type.error and jabber:iq:auth)
+			// connect FB
+			// problem in connection error: invalid access Token
+			// get email address
+			// problem error :cannot access email address
+			// query db with this email
+			// if exist send back user
+			// else error: user not registered yet.
+
+			// if (iq.getgetType()==IQ.Type.
+
+			// System.out.println("query.getNamespace()="+query.getNamespace());
+			// System.out.println("query.getNamespacePrefix()="+query.getNamespacePrefix());
+			// System.out.println("query.getNamespaceURI()="+query.getNamespaceURI());
+			//
+			// System.out.println("session.getAddress()="+session.getAddress());
+			// System.out.println("session.getStatus()="+session.getStatus());
+			// System.out.println("session.getStreamID()="+session.getStreamID());
+			// System.out.println(session.getHostAddress());
+
+		}
+
+	}
+
 	public void interceptPacket(Packet packet, Session session,
 			boolean incoming, boolean processed) throws PacketRejectedException {
 
-		int ii = ((new java.util.Random()).nextInt()) * 10;
+		//System.out.println("@@@ "+packet.toXML());
 
+		handleFBLogin(packet, session,  incoming,
+				 processed);
 		// if ((packet instanceof Message) && !processed) {
 		if ((packet instanceof Message) && !processed && incoming) {
 			Log.info("Intercepted Incoming Message");
+//			if(processed)
+//				Log.info("Processed");
+//			else
+//				Log.info("Not Processed");
 
 			Message message = (Message) packet;
 			// System.out.println(ii+"-->"+"#######Intercomming######");
@@ -1645,7 +2073,35 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					// set postID="" if it doesn't exist
 					if (jsonObject.isNull("postID")) {
 						jsonObject.put("postID", "");
+						jsonObject.put("replyCount", 0);
 					}
+					if (jsonObject.isNull("logTime")) {
+						jsonObject.put("logTime", System.currentTimeMillis());
+					}
+					if (jsonObject.isNull("lastReplyTime")) {
+						jsonObject.put("lastReplyTime", System.currentTimeMillis());
+					}
+					if (jsonObject.isNull("kudosUp")) {
+						jsonObject.put("kudosUp", 0);
+					}
+					if (jsonObject.isNull("kudosDown")) {
+						jsonObject.put("kudosDown", 0);
+					}
+					
+//					 rs.getString("msg"),
+//						rs.getString("postID"),
+//						rs.getString("messageID"),
+//						rs.getString("logTime"),
+//						rs.getString("locationName"),
+//						rs.getString("longitude"),
+//						rs.getString("latitude"),
+//						rs.getString("teleported"),
+//						kudosInfo.get(0)/* up */,
+//						kudosInfo.get(1)/* Down */,
+//						kudosInfo.get(2)/* user */,
+//						rs.getString("replyCount"),
+//						rs.getString("lastReplyTime"),
+//						rs.getString("roomType"));
 
 					message.setBody(jsonObject.toString());
 
@@ -1653,80 +2109,78 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					// System.out.println(ii+"-->"+"message.getTo().toString()="+message.getTo().toString());
 
 					//
-					//
-					// Log.info("Getting Components");
-					// // System.out.println(ii+"-->"+"Getting Components");
-					// String[] components =
-					// message.getTo().toString().split("@");
-					// String serviceDomain = components[1];
-					// String roomName = components[0];
-					//
-					// //
-					// System.out.println(ii+"-->"+"serviceDomain="+serviceDomain);
-					// // System.out.println(ii+"-->"+"roomName2="+roomName);
-					//
-					// Log.info("Service Domain: " + serviceDomain
-					// + " - Room Name: " + roomName);
-					// MultiUserChatService mucService = null;
-					//
-					// // what is this part for?
-					// // seems to get the service responsible service for the
-					// // domain
-					// // it is to find the service responsible to this chat
-					// group
-					// int i = 0;
-					// for (MultiUserChatService curService : server
-					// .getMultiUserChatManager()
-					// .getMultiUserChatServices()) {
-					// Log.info("Loop Domain Check: "
-					// + curService.getServiceDomain());
-					// if (curService.getServiceDomain().equals(serviceDomain))
-					// {
-					// mucService = curService;
-					// //
-					// System.out.println(ii+"-->"+"########################    "+"mucService.getNumberChatRooms()="+mucService.getNumberChatRooms());
-					// break;
-					// }
-					// //
-					// System.out.println(ii+"-->"+"######################## ="+i++);
-					// }
-					//
-					// // get the chat room from the service responsible for
-					// MUCRoom mucRoom = mucService.getChatRoom(roomName);
-					//
-					// boolean senderInRoom = false;
-					//
-					// // loop over all the users present in the chat room
-					// for (MUCRole user : mucRoom.getOccupants()) {
-					// if (message.getFrom().toBareJID()
-					// .equals(user.getUserAddress().toBareJID()))
-					// senderInRoom = true;
-					//
-					// Log.info("Get Occupants, From: "
-					// + message.getFrom().toBareJID()
-					// + " User Address: "
-					// + user.getUserAddress().toBareJID());
-					//
-					// // sendMessage(
-					// // user.getUserAddress().toBareJID(),
-					// // mucRoom.getName() + "@"
-					// // + mucService.getServiceDomain() + "/"
-					// // + message.getFrom().toBareJID(),
-					// // message.getBody(), message.getSubject());
-					// }
-					//
-					// // maybe user currently is not in the chat room
-					// if (!senderInRoom) {
-					// Log.info("Sender Not in Room");
-					// // System.out.println(ii+"-->"+"Sender Not in Room");
-					//
-					// // sendMessage(
-					// // message.getFrom().toBareJID(),
-					// // mucRoom.getName() + "@"
-					// // + mucService.getServiceDomain() + "/"
-					// // + message.getFrom().toBareJID(),
-					// // message.getBody(), message.getSubject());
-					// }
+					//****Commented section:
+					 Log.info("Getting Components");
+					 // System.out.println(ii+"-->"+"Getting Components");
+					 String[] components =
+					 message.getTo().toString().split("@");
+					 String serviceDomain = components[1];
+					 String roomName = components[0];
+					
+					 //
+					 System.out.println("serviceDomain="+serviceDomain);
+					 // System.out.println(ii+"-->"+"roomName2="+roomName);
+					
+					 Log.info("Service Domain: " + serviceDomain + " - Room Name: " + roomName);
+					 MultiUserChatService mucService = null;
+					
+					 // what is this part for?
+					 // seems to get the service responsible service for the
+					 // domain
+					 // it is to find the service responsible to this chat
+					 //group
+					 int i = 0;
+					 for (MultiUserChatService curService : 
+						 server.getMultiUserChatManager().getMultiUserChatServices()) 
+					 {
+						 Log.info("Loop Domain Check: " + curService.getServiceDomain());
+						 if (curService.getServiceDomain().equals(serviceDomain))
+						 {
+							 mucService = curService;
+							 //
+							 System.out.println("########################    "+"mucService.getNumberChatRooms()="+mucService.getNumberChatRooms());
+							 break;
+						 }
+						 //
+						 System.out.println("######################## ="+i++);
+					 }
+					
+					 // get the chat room from the service responsible for
+					 MUCRoom mucRoom = mucService.getChatRoom(roomName);
+					
+					 boolean senderInRoom = false;
+					
+					 // loop over all the users present in the chat room
+					 for (MUCRole user : mucRoom.getOccupants()) {
+						 if (message.getFrom().toBareJID().equals(user.getUserAddress().toBareJID()))
+							 senderInRoom = true;
+						
+						 Log.info("Get Occupants, From: "
+						 + message.getFrom().toBareJID()
+						 + " User Address: "
+						 + user.getUserAddress().toBareJID());
+						
+						  sendMessage(
+						  user.getUserAddress().toBareJID(),
+						  mucRoom.getName() + "@"
+						  + mucService.getServiceDomain() + "/"
+						  + message.getFrom().toBareJID(),
+						  message.getBody(), message.getSubject());
+					 }
+					
+					 // maybe user currently is not in the chat room
+					 if (!senderInRoom) {
+						 Log.info("Sender Not in Room");
+						 System.out.println("Sender Not in Room");
+					
+						  sendMessage(
+						  message.getFrom().toBareJID(),
+						  mucRoom.getName() + "@"
+						  + mucService.getServiceDomain() + "/"
+						  + message.getFrom().toBareJID(),
+						  message.getBody(), message.getSubject());
+					 }
+					//****Commented section
 
 					// add message to the db
 					// System.out.println(ii+"-->"+"---------Adding New Message------");
@@ -1830,10 +2284,10 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 						// -------------------
 						try {
 							pstmt = con
-									.prepareStatement("select t1.messageID,t1.sender,t1.postID from moMessages as t1" +
-											" inner join moMessages as t2 on t1.postID=t2.messageID where" +
-											" t1.postID=? and t1.messageID<>? and t1.sender<>? " +
-											"and t2.sender<>? and t2.sender<>t1.sender;");
+									.prepareStatement("select t1.messageID,t1.sender,t1.postID from moMessages as t1"
+											+ " inner join moMessages as t2 on t1.postID=t2.messageID where"
+											+ " t1.postID=? and t1.messageID<>? and t1.sender<>? "
+											+ "and t2.sender<>? and t2.sender<>t1.sender;");
 							pstmt.setString(1, jsonObject.getString("postID"));
 							pstmt.setString(2,
 									jsonObject.getString("messageID"));
@@ -1877,12 +2331,18 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 					// Adding notification Messages
 
-					notifyRoom(jsonObject.getString("postID"),roomID, user,jsonObject.getString("messageBody"),jsonObject.getString("messageID")); // this is invoked in any case
+					notifyRoom(jsonObject.getString("postID"), roomID, user,
+							jsonObject.getString("messageBody"),
+							jsonObject.getString("messageID")); // this is
+																// invoked in
+																// any case
 					if (jsonObject.getString("postID") != "") {
 						// these are invoked when the message is thread
 						notifyPost(jsonObject.getString("postID"), user,
-								jsonObject.getString("messageBody"),jsonObject.getString("messageID"));
-						notifyReply(jsonObject.getString("postID"), user,jsonObject.getString("messageBody"),
+								jsonObject.getString("messageBody"),
+								jsonObject.getString("messageID"));
+						notifyReply(jsonObject.getString("postID"), user,
+								jsonObject.getString("messageBody"),
 								jsonObject.getString("messageID"));
 					}
 
@@ -1939,7 +2399,8 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 		}
 	}
 
-	private void notifyReply(String relPostID, String relUser, String relMsg,String relMsgID) {
+	private void notifyReply(String relPostID, String relUser, String relMsg,
+			String relMsgID) {
 		// query to see who registered for this room notification.
 		/*
 		 * find the users who they also had reply to this post for each create
@@ -1959,7 +2420,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					.prepareStatement("select count(distinct t1.relMessageID) as badge, t1.messageID,"
 							+ "t1.user,t1.postID,t2.deviceToken from  moMsgReadTrack as t1 "
 							+ "left join moUser as t2 on t1.user=t2.user "
-							+ "where t2.valid=1 and postID=? and t1.user<>? group by t1.user;");
+							+ "where t2.valid=1 and nType3=1 and postID=? and t1.user<>? group by t1.user;");
 			// t1.user<>? -->because we don't want to send notification when
 			// relUser replies to possible previously replies messages
 
@@ -1982,15 +2443,17 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 			while (rs.next()) { // it return record only if the user has device
 								// Token registered!
 				// Log.info("Notifing User Reply: " + rs.getString("user"));
-//				Payload payload = PushNotificationPayload.combined(relUser
-//						+ " Replied your Reply! " + relMsg, rs.getInt("badge"),
-//						"default");
-//				payload.addCustomDictionary("NType", 3);
-//				payload.addCustomDictionary("messageID", relMsg);
-				
-				
-				final String pushMsg = BoomUtil.makePushMessage(relUser
-						+ " Replied your Reply! " + relMsg, String.valueOf(rs.getInt("badge")), "default", relMsgID, "3");
+				// Payload payload = PushNotificationPayload.combined(relUser
+				// + " Replied your Reply! " + relMsg, rs.getInt("badge"),
+				// "default");
+				// payload.addCustomDictionary("NType", 3);
+				// payload.addCustomDictionary("messageID", relMsg);
+
+				final String pushMsg = BoomUtil.makePushMessage(
+						BoomUtil.extractNameofUser(relUser)
+								+ " has replied to your post!",
+						rs.getInt("badge"), "default",
+						relPostID, 3, rs.getString("user"), relUser);
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;
@@ -2022,7 +2485,8 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 	}
 
-	private void notifyPost(String relPostID, String relUser, String relMsg,String relMsgID) {
+	private void notifyPost(String relPostID, String relUser, String relMsg,
+			String relMsgID) {
 		// query to see who registered for this room notification.
 		/*
 		 * find the user of the thread create notification package send package
@@ -2042,7 +2506,7 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 					.prepareStatement("select count(t1.messageID) as badge, t1.messageID, "
 							+ "t1.user,t1.postID,t2.deviceToken from  moMsgReadTrack as t1 "
 							+ "left join moUser as t2 on t1.user=t2.user "
-							+ "where t2.valid=1 and messageID=? and t1.user<>?;");
+							+ "where t2.valid=1  and nType2=1 and messageID=? and t1.user<>?;");
 			pstmt.setString(1, relPostID);
 			pstmt.setString(2, relUser);
 
@@ -2053,16 +2517,18 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 			ArrayList<PayloadPerDevice> plpds = new ArrayList<PayloadPerDevice>();
 			if (rs.next()) { // it return record only if the user has device
 								// Token registered!
-				
-				final String pushMsg = BoomUtil.makePushMessage(relUser
-						+ " Replied your Post! " + relMsg, String.valueOf(rs.getInt("badge")), "default", relMsgID, "2");
+
+				final String pushMsg = BoomUtil.makePushMessage(
+						BoomUtil.extractNameofUser(relUser)
+								+ " has replied to your post!",
+						rs.getInt("badge"), "default",
+						relPostID, 2, rs.getString("user"), relUser);
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;
 					};
 				};
 
-				
 				PayloadPerDevice plpd = new PayloadPerDevice(payload,
 						rs.getString("deviceToken"));
 				plpds.add(plpd);
@@ -2087,7 +2553,8 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 	}
 
-	private void notifyRoom(String relPostID,int roomID, String relUser, String relMsg,String relMsgID) {
+	private void notifyRoom(String relPostID, int roomID, String relUser,
+			String relMsg, String relMsgID) {
 		// TODO Auto-generated method stub
 
 		// query to see who registered for this room notification.
@@ -2100,44 +2567,60 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 		Date t = new Date();
+		String parentPostID; // this is set to messageID if the message is post
+								// and to postID of reply if message is reply
 		try {
 
 			con = DbConnectionManager.getConnection();
-			
-			if (relPostID!=""){ //already might notified user
-			pstmt = con
-					.prepareStatement("select t1.user,t1.roomID,t1.deviceToken,t2.user from " +
-							"movRoomsNotifyList as t1 left join (select distinct t1.user from  " +
-							"moMsgReadTrack as t1 where (messageID=? or postID=?) and t1.user<>?) " +
-							"as t2 on t1.user=t2.user where t1.roomID=? and t1.endTime > ? and t1.user<>? " +
-							"and t2.user is null;");
-			pstmt.setString(1, relPostID);
-			pstmt.setString(2, relPostID);
-			pstmt.setString(3, relUser);
-			pstmt.setInt(4, roomID);
-			pstmt.setLong(5, t.getTime());
-			pstmt.setString(6, relUser);
-			
-			
-			System.out.println("select t1.user,t1.roomID,t1.deviceToken,t2.user from " +
-							"movRoomsNotifyList as t1 left join (select distinct t1.user from  " +
-							"moMsgReadTrack as t1 where (messageID='"+relPostID+"' or postID='"+relPostID+
-							"') and t1.user<>'"+relUser+"') " +
-							"as t2 on t1.user=t2.user where t1.roomID="+roomID+" and t1.endTime > "+
-							t.getTime()+" and " +
-							"t2.user is null;");
-			//System.out.println("@@@@@@@@@"+t.getTime());
-			}else{
+
+			if (relPostID != "") { // already might notified user
+				parentPostID = relPostID;
 				pstmt = con
-						.prepareStatement("select t1.user,t1.roomID,t1.deviceToken from " +
-								"movRoomsNotifyList as t1 where t1.roomID=? and t1.endTime > ? " +
-								"and t1.user<>?");
+						.prepareStatement("select t1.user,t1.roomID,t1.deviceToken,t2.user from "
+								+ "movRoomsNotifyList as t1 left join (select distinct t1.user from  "
+								+ "moMsgReadTrack as t1 where (messageID=? or postID=?) and t1.user<>?) "
+								+ "as t2 on t1.user=t2.user where t1.roomID=? and t1.endTime > ? and t1.user<>? "
+								+ "and t1.nType4=1 and t2.user is null;");
+				pstmt.setString(1, relPostID);
+				pstmt.setString(2, relPostID);
+				pstmt.setString(3, relUser);
+				pstmt.setInt(4, roomID);
+				pstmt.setLong(5, t.getTime());
+				pstmt.setString(6, relUser);
+
+				System.out
+						.println("select t1.user,t1.roomID,t1.deviceToken,t2.user from "
+								+ "movRoomsNotifyList as t1 left join (select distinct t1.user from  "
+								+ "moMsgReadTrack as t1 where (messageID='"
+								+ relPostID
+								+ "' or postID='"
+								+ relPostID
+								+ "') and t1.user<>'"
+								+ relUser
+								+ "') "
+								+ "as t2 on t1.user=t2.user where t1.roomID="
+								+ roomID
+								+ " and t1.endTime > "
+								+ t.getTime()
+								+ " and " + "t2.user is null;");
+				// System.out.println("@@@@@@@@@"+t.getTime());
+			} else {
+				parentPostID = relMsgID;
+				pstmt = con
+						.prepareStatement("select t1.user,t1.roomID,t1.deviceToken from "
+								+ "movRoomsNotifyList as t1 where t1.roomID=? and t1.endTime > ? "
+								+ "and t1.user<>?");
 				pstmt.setInt(1, roomID);
 				pstmt.setLong(2, t.getTime());
 				pstmt.setString(3, relUser);
-				System.out.println("select t1.user,t1.roomID,t1.deviceToken from " +
-								"movRoomsNotifyList as t1 where t1.roomID="+roomID+" and " +
-										"t1.endTime > and t1.user<>?"+t.getTime()+";");
+				System.out
+						.println("select t1.user,t1.roomID,t1.deviceToken from "
+								+ "movRoomsNotifyList as t1 where t1.roomID="
+								+ roomID
+								+ " and "
+								+ "t1.endTime > and t1.user<>?"
+								+ t.getTime()
+								+ ";");
 			}
 			rs = pstmt.executeQuery();
 
@@ -2147,19 +2630,21 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 			while (rs.next()) {
 				// Log.info("Notifing User: " + rs.getString("user"));
 				// prepare package for this user
-//				Payload payload = PushNotificationPayload.combined(
-//						"New Message in Room!", 1, "default");
-//				payload.addCustomDictionary("NType", 4);
-//				payload.addCustomDictionary("messageID", relMsg);
-				
-				final String pushMsg = BoomUtil.makePushMessage(" New  message in Room! " + relMsg, "1", "default", relMsgID, "4");
+				// Payload payload = PushNotificationPayload.combined(
+				// "New Message in Room!", 1, "default");
+				// payload.addCustomDictionary("NType", 4);
+				// payload.addCustomDictionary("messageID", relMsg);
+
+				final String pushMsg = BoomUtil.makePushMessage(
+						BoomUtil.extractNameofUser(relUser) + " said \""
+								+ BoomUtil.trancateMsg(relMsg, 80) + "\"", 1,
+						"default", parentPostID, 4, rs.getString("user"), relUser);
 				Payload payload = new Payload() {
 					public String toString() {
 						return pushMsg;
 					};
 				};
-				
-				
+
 				PayloadPerDevice plpd = new PayloadPerDevice(payload,
 						rs.getString("deviceToken"));
 				plpds.add(plpd);
@@ -2169,8 +2654,8 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 			con.close();
 
 			// for each device token send information
-//			Payload payload = PushNotificationPayload.combined(
-//					"New Message in Room!", 1, "default");
+			// Payload payload = PushNotificationPayload.combined(
+			// "New Message in Room!", 1, "default");
 			PushThread pt = new PushThread(plpds, IS_PRODUCTION, 2);
 			pt.start();
 

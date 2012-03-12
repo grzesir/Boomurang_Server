@@ -205,7 +205,10 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 						.equals("notifications:settings")) {
 					getNotificationSettings(resultChild, query, packet);
 				}
-
+				else if (query.attribute("type").getValue()
+						.equals("user:infoForUser")) {
+					getUserInfoForUser(resultChild, query, packet);
+				}
 			}
 
 			else if (type.equals(IQ.Type.set)) {
@@ -248,6 +251,92 @@ public class BoomurangPlugin implements Plugin, PacketInterceptor {
 
 			Log.info("Returning Result");
 			return result;
+		}
+
+		private void getUserInfoForUser(Element resultChild, Element query,
+				IQ packet) {
+
+			// TODO Auto-generated method stub
+						Log.info("Is Query Type: " + query.attribute("type").getValue());
+						// return messages which user replied to
+						Connection con = null;
+						PreparedStatement pstmt = null;
+						ResultSet rs = null;
+						try {
+							int kudosUp = 0;
+							int kudosDown = 0;
+							int postCount = 0;
+							int replyCount = 0;
+							con = DbConnectionManager.getConnection();
+							String user =query.element("user").getText(); // packet.getFrom().toBareJID();
+							// get kudos UP
+							pstmt = con
+									.prepareStatement("select sum(value) as kudosUp from moKudos left join moMessages "
+											+ "on moKudos.messageID=moMessages.messageID where sender=? and value>0 ;");
+							pstmt.setString(1, user);
+							rs = pstmt.executeQuery();
+							if (rs.next()) {
+								kudosUp = rs.getInt("kudosUp");
+
+							}
+
+							// get kudos Down
+							pstmt = con
+									.prepareStatement("select sum(value) as kudosDown from moKudos left join moMessages on "
+											+ "moKudos.messageID=moMessages.messageID where sender=? and value<0 ;");
+							pstmt.setString(1, user);
+							rs = pstmt.executeQuery();
+							if (rs.next()) {
+								kudosDown = rs.getInt("kudosDown");
+
+							}
+
+							// get post Count
+							pstmt = con
+									.prepareStatement("select count(msg) as postCount from moMessages where sender=? and postID=\"\";");
+							pstmt.setString(1, user);
+							rs = pstmt.executeQuery();
+							if (rs.next()) {
+								postCount = rs.getInt("postCount");
+
+							}
+
+							// get reply Count
+							pstmt = con
+									.prepareStatement("select count(msg) as replyCount from moMessages where sender=? and postID<>\"\";");
+							pstmt.setString(1, user);
+							rs = pstmt.executeQuery();
+							if (rs.next()) {
+								replyCount = rs.getInt("replyCount");
+
+							}
+
+							// get last Post
+							// pstmt = con
+							// .prepareStatement("select * from moMessages where sender=? order by logTime desc limit 0,1;");
+							// pstmt.setString(1, user);
+							// rs = pstmt.executeQuery();
+							// if (rs.next()) {
+							// replyCount = rs.getInt("lastPost");
+							//
+							// }
+
+							resultChild.addElement("kudosUp").addText(
+									String.valueOf(kudosUp));
+							resultChild.addElement("kudosDown").addText(
+									String.valueOf(kudosDown));
+							resultChild.addElement("postCount").addText(
+									String.valueOf(postCount));
+							resultChild.addElement("replyCount").addText(
+									String.valueOf(replyCount));
+
+						} catch (SQLException sqle) {
+							Log.info("Error:" + sqle.getMessage());
+						} catch (Exception ex) {
+							Log.info("Error:" + ex.getMessage());
+						} finally {
+							DbConnectionManager.closeConnection(pstmt, con);
+						}
 		}
 
 		private void getNotificationSettings(Element resultChild,

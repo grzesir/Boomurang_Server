@@ -47,8 +47,7 @@ public class PushThread extends Thread{
 		//in=XMPPServer.getInstance().getPluginManager().getPluginClassloader(boomurang).getResourceAsStream(certFile);
 		
 		
-		in = this.getClass().getClassLoader().getResourceAsStream("Development.p12"); // this also works
-		
+		in = this.getClass().getClassLoader().getResourceAsStream(certFile); // this also works
 		
 		
 	}
